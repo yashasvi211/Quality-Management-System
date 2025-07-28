@@ -109,10 +109,37 @@ function CreateEventPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(addEvent(formData));
-    navigate('/');
+
+    const apiPayload = {
+      title: formData.title,
+      event_type: formData.eventDetails.type,
+      description: formData.eventDetails.description,
+      date: formData.eventDetails.date,
+      location: formData.eventDetails.location,
+      responsible_person: formData.responsiblePerson,
+      status: formData.status,
+    };
+
+    try {
+      const response = await fetch('http://localhost:8000/event', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiPayload),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create Event');
+      }
+      const result = await response.json();
+      console.log('Event created:', result);
+      navigate('/');
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   const renderStepContent = () => {

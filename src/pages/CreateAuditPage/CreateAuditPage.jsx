@@ -155,10 +155,49 @@ function CreateAuditPage() {
   const handleNext = () => currentStep < WIZARD_STEPS.length && setCurrentStep(currentStep + 1);
   const handlePrev = () => currentStep > 1 && setCurrentStep(currentStep - 1);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(addEvent(formData));
-    navigate('/');
+
+    // --- START: Add this data transformation ---
+    const apiPayload = {
+      title: formData.title,
+      type: formData.auditDetails.type,
+      risk: formData.risk,
+      scope: formData.auditDetails.scope,
+      objective: formData.auditDetails.objective,
+      auditee_name: formData.auditee.name,
+      site_location: formData.auditee.siteLocation,
+      country: formData.auditee.country,
+      primary_contact: formData.auditee.primaryContact,
+      contact_email: formData.auditee.contactEmail,
+      audit_date: formData.date,
+      lead_auditor: formData.team.leadAuditor,
+      members: formData.team.members,
+      criteria: formData.plan.criteria,
+      agenda: formData.plan.agenda,
+    };
+    // --- END: Add this data transformation ---
+
+    try {
+      const response = await fetch('http://localhost:8000/audit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Use the new payload object here
+        body: JSON.stringify(apiPayload), 
+      });
+      if (!response.ok) {
+        // Log the error response from the server for better debugging
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create audit');
+      }
+      const result = await response.json();
+      console.log('Audit created:', result);
+      navigate('/');
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   const CurrentStepComponent = WIZARD_STEPS[currentStep - 1].component;

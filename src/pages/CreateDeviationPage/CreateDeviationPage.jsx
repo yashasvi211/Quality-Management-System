@@ -135,10 +135,41 @@ function CreateDeviationPage() {
   const handleNext = () => currentStep < WIZARD_STEPS.length && setCurrentStep(currentStep + 1);
   const handlePrev = () => currentStep > 1 && setCurrentStep(currentStep - 1);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(addEvent({ ...formData, type: 'Deviation', owner: formData.ownerName }));
-    navigate('/');
+
+    // Correctly map the flat formData state to the API payload
+    const apiPayload = {
+      title: formData.title,
+      dateOccurred: formData.dateOccurred,
+      description: formData.description,
+      ownerName: formData.ownerName,
+      risk: formData.risk,
+      reportedBy: formData.reportedBy,
+      impact: formData.impact,
+      correctiveActions: formData.correctiveActions,
+    };
+
+    try {
+      const response = await fetch('http://localhost:8000/deviation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create Deviation');
+      }
+
+      const result = await response.json();
+      console.log('Deviation created:', result);
+      navigate('/');
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   const CurrentStepComponent = WIZARD_STEPS[currentStep - 1].component;

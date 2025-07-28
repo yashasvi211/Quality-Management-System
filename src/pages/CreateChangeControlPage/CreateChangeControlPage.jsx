@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { addEvent } from '../../redux/features/eventsSlice';
-import { ArrowLeft, ArrowRight, Save, Check, ClipboardCheck, Edit3, FileText, User, Layers, AlertCircle, Map, ListChecks, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, Check, ClipboardCheck, Edit3, FileText, User, Layers, AlertCircle, Map, ListChecks, CheckCircle2, AlertTriangle } from 'lucide-react';
 import '../CreateAuditPage/CreateAuditPage.css';
 
 // Step 1: Basic Change Control Info
@@ -116,14 +116,14 @@ const WIZARD_STEPS = [
 ];
 
 const initialFormData = {
-  title: '', // The title of the change control event
-  changeDescription: '', // Description of the change
-  reasonForChange: '', // Why the change is needed
-  requestedBy: '', // Person requesting the change
-  affectedAreas: '', // Areas affected by the change
-  implementationPlan: '', // Plan for implementing the change
-  ownerName: '', // The name of the owner responsible for the change control
-  risk: 'Medium', // Default risk level
+  title: '',
+  changeDescription: '',
+  reasonForChange: '',
+  requestedBy: '',
+  affectedAreas: '',
+  implementationPlan: '',
+  ownerName: '',
+  risk: 'Medium',
 };
 
 function CreateChangeControlPage() {
@@ -135,10 +135,41 @@ function CreateChangeControlPage() {
   const handleNext = () => currentStep < WIZARD_STEPS.length && setCurrentStep(currentStep + 1);
   const handlePrev = () => currentStep > 1 && setCurrentStep(currentStep - 1);
 
-  const handleSubmit = (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(addEvent({ ...formData, type: 'Change Control', owner: formData.ownerName }));
-    navigate('/');
+
+    // Correctly map the flat formData state to the API payload
+    const apiPayload = {
+      title: formData.title,
+      requestedBy: formData.requestedBy,
+      changeDescription: formData.changeDescription,
+      ownerName: formData.ownerName,
+      risk: formData.risk,
+      reasonForChange: formData.reasonForChange,
+      affectedAreas: formData.affectedAreas,
+      implementationPlan: formData.implementationPlan,
+    };
+
+    try {
+      const response = await fetch('http://localhost:8000/change_control', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create Change Control');
+      }
+      
+      const result = await response.json();
+      console.log('Change Control created:', result);
+      navigate('/');
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   const CurrentStepComponent = WIZARD_STEPS[currentStep - 1].component;

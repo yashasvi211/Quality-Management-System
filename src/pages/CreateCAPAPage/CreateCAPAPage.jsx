@@ -140,10 +140,44 @@ function CreateCAPAPage() {
   const handleNext = () => currentStep < WIZARD_STEPS.length && setCurrentStep(currentStep + 1);
   const handlePrev = () => currentStep > 1 && setCurrentStep(currentStep - 1);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(addEvent({ ...formData, type: 'CAPA', owner: formData.ownerName }));
-    navigate('/');
+
+    // Use camelCase keys to match the backend's expectations
+    const apiPayload = {
+      title: formData.title,
+      responsiblePerson: formData.responsiblePerson,
+      ownerName: formData.ownerName,
+      issueDescription: formData.issueDescription,
+      risk: formData.risk,
+      rootCause: formData.rootCause,
+      correctiveActions: formData.correctiveActions,
+      preventiveActions: formData.preventiveActions,
+      dueDate: formData.dueDate,
+    };
+
+    try {
+      const response = await fetch('http://localhost:8000/capa', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiPayload),
+      });
+
+      if (!response.ok) {
+        // Log the actual error from the server for easier debugging
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create CAPA');
+      }
+
+      const result = await response.json();
+      console.log('CAPA created:', result);
+      navigate('/');
+    } catch (error) {
+      // The error will now be more specific, e.g., "Column 'responsible_person' cannot be null"
+      console.error('Error:', error.message);
+    }
   };
 
   const CurrentStepComponent = WIZARD_STEPS[currentStep - 1].component;
