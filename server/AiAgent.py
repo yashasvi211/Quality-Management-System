@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 # --- Environment Setup ---
 # It's best practice to set this in your environment, but we'll use a fallback.
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 # --- LLM Initialization ---
 # Using Gemini 1.5 Flash via Groq for speed and intelligence
