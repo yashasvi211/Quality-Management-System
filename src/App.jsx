@@ -2,8 +2,8 @@ import React from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import EventListPage from './pages/EventListPage/EventListPage';
-import CreateAuditPage from './pages/CreateAuditPage/CreateAuditPage'; // New Audit Wizard
-import EventDetailPage from './pages/EventDetailPage/EventDetailPage'; // This will be the router component
+import CreateAuditPage from './pages/CreateAuditPage/CreateAuditPage';
+import EventDetailPage from './pages/EventDetailPage/EventDetailPage';
 import AIAssistant from './components/AIAssistant';
 import './App.css';
 import CreateEventPage from './pages/CreateEventPage/CreateEventPage';
@@ -28,7 +28,9 @@ function App() {
             <Route path="/create-change-control" element={<CreateChangeControlPage />} />
             <Route path="/create-capa" element={<CreateCAPAPage />} />
             <Route path="/create-event" element={<CreateEventPage />} />
-            <Route path="/event/:eventId" element={<EventDetailPage />} />
+            {/* --- CORRECTED ROUTE --- */}
+            {/* This route now correctly captures both the event type and the ID from the URL */}
+            <Route path="/event/:eventType/:eventId" element={<EventDetailPage />} />
           </Routes>
         </main>
         {showAIAssistant && <AIAssistant />}

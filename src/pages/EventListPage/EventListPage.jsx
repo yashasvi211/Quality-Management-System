@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { selectAllEvents } from '../../redux/features/eventsSlice';
-import { Filter, PlusCircle } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import './EventListPage.css';
 
+// Helper function to determine the CSS class for the status badge
 const getStatusBadgeClass = (status) => {
     switch (status) {
         case 'Planned': return 'status-planned';
-        case 'Investigation':
         case 'In Progress': return 'status-in-progress';
         case 'Closed': return 'status-closed';
         case 'Cancelled': return 'status-cancelled';
@@ -16,10 +14,71 @@ const getStatusBadgeClass = (status) => {
     }
 };
 
+// Helper function to get the correct prefix for the event type
+const getEventTypePrefix = (eventType) => {
+    switch (eventType) {
+        case 'Audit':
+            return 'AUD';
+        case 'Change Control':
+            return 'CHC';
+        case 'CAPA':
+            return 'CPA';
+        case 'Deviation':
+            return 'DEV';
+        default:
+            // Fallback for any other types
+            return eventType.substring(0, 3).toUpperCase();
+    }
+};
+
 function EventListPage() {
-  const events = useSelector(selectAllEvents);
+  // State for storing events, loading status, and errors
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const navigate = useNavigate();
   const [filtersVisible, setFiltersVisible] = useState(false);
+
+  // useEffect hook to fetch data when the component mounts
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:8000/events');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setEvents(data);
+      } catch (e) {
+        setError(e.message);
+        console.error("Failed to fetch events:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []); // The empty dependency array ensures this runs only once on mount
+
+  // Handle row click to navigate to a detail page
+  const handleRowClick = (eventType, eventId) => {
+    if (!eventType || !eventId) return;
+    // Create a URL-friendly path (e.g., "Change Control" becomes "change-control")
+    const path = eventType.toLowerCase().replace(/\s+/g, '-');
+    navigate(`/event/${path}/${eventId}`);
+  };
+
+  // Render loading state
+  if (loading) {
+    return <div className="list-page-container"><p>Loading events...</p></div>;
+  }
+
+  // Render error state
+  if (error) {
+    return <div className="list-page-container"><p>Error fetching data: {error}</p></div>;
+  }
 
   return (
     <div className="list-page-container">
@@ -34,13 +93,8 @@ function EventListPage() {
 
       {filtersVisible && (
         <div className="filter-panel">
-          <div className="filter-grid">
-            <div><label htmlFor="filter-id">Event ID</label><input type="text" id="filter-id" /></div>
-            <div><label htmlFor="filter-type">Type</label><select id="filter-type"><option>All</option><option>Deviation</option><option>CAPA</option><option>Audit</option></select></div>
-            <div><label htmlFor="filter-status">Status</label><select id="filter-status"><option>All</option><option>Planned</option><option>Investigation</option><option>In Progress</option><option>Closed</option></select></div>
-            <div><label htmlFor="filter-owner">Owner</label><input type="text" id="filter-owner" /></div>
-            <div><label htmlFor="filter-department">Department</label><input type="text" id="filter-department" /></div>
-          </div>
+          {/* Filter inputs can be implemented here */}
+          <p>Filter controls will go here.</p>
         </div>
       )}
 
@@ -59,17 +113,23 @@ function EventListPage() {
               </tr>
             </thead>
             <tbody>
-              {events.map((event) => (
-                <tr key={event.id} onClick={() => navigate(`/event/${event.id}`)} className="clickable-row">
-                  <td className="linkable">{event.id}</td>
-                  <td className="wrap-text">{event.title}</td>
-                  <td>{event.type}</td>
-                  <td><span className={`status-badge ${getStatusBadgeClass(event.status)}`}>{event.status}</span></td>
-                  <td>{event.owner}</td>
-                  <td>{new Date(event.schedule?.confirmedEndDate || event.dueDate).toLocaleDateString()}</td>
-                  <td>{event.risk || 'N/A'}</td>
+              {events.length > 0 ? (
+                events.map((event) => (
+                  <tr key={`${event.type}-${event.id}`} onClick={() => handleRowClick(event.type, event.id)} className="clickable-row">
+                    <td className="linkable">{`${getEventTypePrefix(event.type)}-${event.id}`}</td>
+                    <td className="wrap-text">{event.title}</td>
+                    <td>{event.type}</td>
+                    <td><span className={`status-badge ${getStatusBadgeClass(event.status)}`}>{event.status}</span></td>
+                    <td>{event.owner || 'N/A'}</td>
+                    <td>{event.due_date ? new Date(event.due_date).toLocaleDateString() : 'N/A'}</td>
+                    <td>{event.risk || 'N/A'}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center' }}>No events found.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

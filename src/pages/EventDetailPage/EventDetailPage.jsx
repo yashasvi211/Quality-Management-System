@@ -1,38 +1,39 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
-import { selectEventById } from '../../redux/features/eventsSlice';
 import AuditDetail from './AuditDetail';
 import DeviationDetail from './DeviationDetail';
+import CapaDetail from './CapaDetail';
+import ChangeControlDetail from './ChangeControlDetail';
 import './EventDetailPage.css';
 
 // This component now acts as a router to display the correct detail page
-// based on the event type.
+// based on the event type from the URL.
 
 function EventDetailPage() {
-  const { eventId } = useParams();
-  const event = useSelector((state) => selectEventById(state, eventId));
+  // Get eventType (e.g., 'audit', 'capa') and eventId from the URL
+  const { eventType, eventId } = useParams();
 
-  if (!event) {
-    return (
-      <div className="detail-page-container">
-        <h2>Event Not Found</h2>
-        <p>The event with ID "{eventId}" could not be found.</p>
-        <Link to="/" className="back-link">
-          &larr; Back to Dashboard
-        </Link>
-      </div>
-    );
-  }
-
-  // Render the appropriate detail component based on event type
-  switch (event.type) {
-    case 'Audit':
-      return <AuditDetail event={event} />;
-    case 'Deviation':
-    case 'CAPA': // Can add a specific CAPADetail component later
+  // Render the appropriate detail component based on the eventType parameter
+  switch (eventType) {
+    case 'audit':
+      return <AuditDetail eventId={eventId} />;
+    case 'deviation':
+      return <DeviationDetail eventId={eventId} />;
+    case 'capa':
+      return <CapaDetail eventId={eventId} />;
+    case 'change-control':
+      return <ChangeControlDetail eventId={eventId} />;
     default:
-      return <DeviationDetail event={event} />;
+      // Fallback for an unknown event type
+      return (
+        <div className="detail-page-container">
+          <h2>Unknown Event Type</h2>
+          <p>The event type "{eventType}" is not recognized.</p>
+          <Link to="/" className="back-link">
+            &larr; Back to Dashboard
+          </Link>
+        </div>
+      );
   }
 }
 
