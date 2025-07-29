@@ -1,0 +1,114 @@
+-- This script will create the database, all necessary tables, and populate them with sample data.
+-- It is designed to be run once to set up the entire environment for the application.
+
+-- Step 1: Create the database if it doesn't exist
+CREATE DATABASE IF NOT EXISTS `quality_management`;
+USE `quality_management`;
+
+-- Step 2: Create the 'audit' table
+DROP TABLE IF EXISTS `audit`;
+CREATE TABLE `audit` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `type` varchar(50) NOT NULL,
+  `risk` enum('None','Low','Medium','High') DEFAULT 'Medium',
+  `status` enum('Planned','In Progress','Completed','Cancelled') NOT NULL DEFAULT 'Planned',
+  `scope` text,
+  `objective` text,
+  `auditee_name` varchar(255) NOT NULL,
+  `site_location` varchar(255) NOT NULL,
+  `country` varchar(100) NOT NULL,
+  `primary_contact` varchar(255) NOT NULL,
+  `contact_email` varchar(255) DEFAULT NULL,
+  `audit_date` date NOT NULL,
+  `lead_auditor` varchar(255) NOT NULL,
+  `members` text,
+  `criteria` text NOT NULL,
+  `agenda` text,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Step 3: Create the 'capa' table
+DROP TABLE IF EXISTS `capa`;
+CREATE TABLE `capa` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `responsible_person` varchar(255) NOT NULL,
+  `owner_name` varchar(255) NOT NULL,
+  `issue_description` text,
+  `risk` enum('None','Low','Medium','High') DEFAULT 'Medium',
+  `status` enum('Planned','In Progress','Completed','Cancelled') NOT NULL DEFAULT 'Planned',
+  `root_cause` text NOT NULL,
+  `corrective_actions` text NOT NULL,
+  `preventive_actions` text NOT NULL,
+  `due_date` date NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Step 4: Create the 'change_control' table
+DROP TABLE IF EXISTS `change_control`;
+CREATE TABLE `change_control` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `requested_by` varchar(255) NOT NULL,
+  `change_description` text,
+  `owner_name` varchar(255) NOT NULL,
+  `risk` enum('None','Low','Medium','High') DEFAULT 'Medium',
+  `status` enum('Planned','In Progress','Completed','Cancelled') NOT NULL DEFAULT 'Planned',
+  `reason_for_change` text NOT NULL,
+  `affected_areas` text NOT NULL,
+  `implementation_plan` text NOT NULL,
+  `due_date` date DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Step 5: Create the 'deviation' table
+DROP TABLE IF EXISTS `deviation`;
+CREATE TABLE `deviation` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `date_occurred` date DEFAULT NULL,
+  `description` text,
+  `owner_name` varchar(255) NOT NULL,
+  `risk` enum('None','Low','Medium','High') DEFAULT 'Medium',
+  `status` enum('Planned','In Progress','Completed','Cancelled') NOT NULL DEFAULT 'Planned',
+  `reported_by` varchar(255) NOT NULL,
+  `impact` text NOT NULL,
+  `corrective_actions` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- Step 6: Insert sample data into all tables
+
+-- Populate 'audit' table
+INSERT INTO `audit` (`id`, `title`, `type`, `risk`, `status`, `scope`, `objective`, `auditee_name`, `site_location`, `country`, `primary_contact`, `contact_email`, `audit_date`, `lead_auditor`, `members`, `criteria`, `agenda`) VALUES
+(1, 'Internal Audit of Ryaltris Nasal Spray Production Line', 'Internal', 'High', 'Completed', 'End-to-end review of the Ryaltris manufacturing process, including raw material handling, mixing, filling, and packaging.', 'To ensure compliance with Good Manufacturing Practices (GMP) and internal SOPs.', 'Glenmark Pharmaceuticals Ltd.', 'Baddi, Himachal Pradesh', 'India', 'Sunita Sharma', 'sunita.sharma@glenmarkpharma.com', '2025-05-15', 'Rajesh Kumar', 'Priya Singh, Amit Verma', '21 CFR Part 211, Schedule M, Internal SOP-MFG-101', 'Day 1: Process Walkthrough. Day 2: Batch Record Review. Day 3: Operator Interviews.'),
+(2, 'Supplier Audit: ABC Packaging Solutions', 'Supplier/Vendor', 'Medium', 'In Progress', 'Audit of the manufacturing facility for sterile blister packs used for cardiac stents.', 'To verify supplier''s quality control measures and ensure packaging integrity.', 'ABC Packaging Solutions', 'Pune, Maharashtra', 'India', 'Vikram Rathod', 'vikram.r@abcpackaging.com', '2025-06-10', 'Anjali Mehta', 'Sameer Ali', 'ISO 13485, Glenmark Supplier Quality Agreement', 'Morning: Review of sterilization records. Afternoon: Inspection of cleanroom facilities.'),
+(3, 'US FDA Pre-Approval Inspection (PAI)', 'Regulatory', 'High', 'Planned', 'Inspection of the new injectable drug facility prior to commercial launch approval in the US.', 'To demonstrate to the US Food and Drug Administration that the facility is ready for GMP-compliant manufacturing.', 'Glenmark Generics Inc.', 'Monroe, North Carolina', 'USA', 'John Smith', 'john.smith@glenmarkpharma.com', '2025-07-22', 'FDA Inspector', 'N/A', '21 CFR Part 210 & 211', 'Week 1: Facility and Equipment Review. Week 2: Quality System Deep Dive.'),
+(4, 'Quality Audit of Nebulizer Device Assembly', 'Internal', 'Medium', 'Completed', 'Review of the assembly line for the DigiHaler, focusing on electronic component integration and device calibration.', 'To ensure device functionality and reliability meet product specifications.', 'Glenmark Life Sciences', 'Ankleshwar, Gujarat', 'India', 'Deepak Patel', 'deepak.patel@glenmarklifesciences.com', '2025-05-28', 'Rajesh Kumar', 'Priya Singh', 'ISO 13485:2016, Medical Device Rule 2017', 'Review of Device History Records (DHRs) and calibration logs.'),
+(5, 'Data Integrity Audit of QC Laboratory', 'Internal', 'High', 'In Progress', 'Audit of the Quality Control laboratory''s electronic data systems, including HPLC and GC software.', 'To ensure compliance with 21 CFR Part 11 and prevent data integrity breaches.', 'Glenmark Pharmaceuticals Ltd.', 'Baddi, Himachal Pradesh', 'India', 'Neha Desai', 'neha.desai@glenmarkpharma.com', '2025-07-05', 'Anjali Mehta', 'Amit Verma', '21 CFR Part 11, GAMP 5', 'Review of audit trails, user access controls, and data backup procedures.');
+
+-- Populate 'deviation' table
+INSERT INTO `deviation` (`id`, `title`, `date_occurred`, `description`, `owner_name`, `risk`, `status`, `reported_by`, `impact`, `corrective_actions`) VALUES
+(1, 'Temperature Excursion in Cold Storage Unit #3', '2025-06-18', 'The temperature in Cold Storage Unit #3, containing monoclonal antibody drug substance, rose to 10°C for 90 minutes due to a faulty compressor.', 'Warehouse Head', 'High', 'Completed', 'Warehouse Operator', 'Potential loss of one batch of high-value drug substance. Batch quarantined pending investigation.', 'Moved batch to a backup unit. Compressor replaced. Alarm system verified.'),
+(2, 'Incorrect Component used in Nebulizer Assembly', '2025-05-22', 'An operator mistakenly used microcontroller model #MC-A instead of #MC-B on a batch of 50 DigiHaler devices.', 'Production Supervisor', 'Medium', 'In Progress', 'QC Inspector', 'Affected devices fail final functionality test. No safety risk, but requires rework.', 'Isolated and quarantined the 50 affected devices. Operator retrained. Component bins are now barcode-verified.'),
+(3, 'pH Meter Calibration Out of Tolerance', '2025-07-11', 'During its daily calibration check, the pH meter in the QC lab (ID: PH-05) was found to be reading 0.2 units below the standard buffer solution.', 'QC Manager', 'Low', 'Planned', 'QC Analyst', 'All pH readings taken in the last 24 hours are potentially inaccurate. No product was released based on these readings.', 'Meter taken out of service for maintenance. All samples from the previous day scheduled for re-testing.'),
+(4, 'SOP for Line Clearance Not Followed', '2025-06-05', 'An operator on the tablet packaging line failed to properly document the line clearance procedure between two different product batches.', 'Packaging Head', 'Medium', 'Completed', 'QA Inspector', 'Risk of product mix-up, although a visual inspection confirmed no stray tablets. Disciplinary action taken.', 'The entire packaging run was halted and a full re-clearance was performed. Operator received a formal warning and retraining.'),
+(5, 'Unexpected Brown Particles in Purified Water Tank', '2025-07-25', 'During a routine visual inspection, brown-colored microparticles were observed in the WFI (Water for Injection) holding tank T-101.', 'Engineering Head', 'High', 'Planned', 'Utility Operator', 'Entire WFI system shut down. Production of all injectable products halted.', 'Tank drained and sanitized. Source of particles traced to a corroded valve, which is being replaced. Full system re-validation required.');
+
+-- Populate 'capa' table
+INSERT INTO `capa` (`id`, `title`, `responsible_person`, `owner_name`, `issue_description`, `risk`, `status`, `root_cause`, `corrective_actions`, `preventive_actions`, `due_date`) VALUES
+(1, 'CAPA for Cold Storage Temperature Excursion', 'Amit Verma', 'Warehouse Head', 'A faulty compressor in Cold Storage Unit #3 led to a temperature excursion, compromising a batch of drug substance.', 'High', 'In Progress', 'The preventive maintenance schedule for the compressor was inadequate and did not include predictive failure analysis.', '1. Replace the faulty compressor.\n2. Conduct a stability study on the affected batch to determine usability.', '1. Revise the PM schedule for all critical refrigeration units to include quarterly vibration analysis.\n2. Install a redundant temperature monitoring system with SMS alerts.', '2025-09-30'),
+(2, 'CAPA for Incorrect Component in Nebulizer', 'Priya Singh', 'Production Supervisor', 'An operator used the wrong microcontroller during the assembly of 50 DigiHaler devices.', 'Medium', 'Completed', 'Component bins for similar-looking parts were placed next to each other, and the operator was not required to scan the component barcode.', '1. Rework all 50 affected devices with the correct microcontroller.', '1. Redesign the assembly station layout to physically separate look-alike components.\n2. Update the MES to make barcode scanning of each component mandatory before proceeding.', '2025-07-15'),
+(3, 'CAPA for Repeated Out-of-Spec Tablet Hardness', 'Sameer Ali', 'Production Head', 'Batch #T-456 of Telmisartan tablets failed hardness testing for the third time in two months.', 'Medium', 'Planned', 'The granulation machine''s chopper speed is fluctuating due to a worn-out motor bearing, leading to inconsistent granule size.', '1. Re-process the failed batch after further milling.\n2. Replace the motor bearing on the granulation machine.', '1. Add motor bearing inspection to the monthly machine maintenance checklist.\n2. Evaluate upgrading to a granulation machine with real-time sensor feedback.', '2025-08-20'),
+(4, 'CAPA for FDA 483 Observation on Data Integrity', 'Anjali Mehta', 'QC Manager', 'The US FDA issued a 483 observation regarding shared user accounts on the HPLC software.', 'High', 'In Progress', 'The laboratory had a culture of analysts sharing login credentials for convenience, and the system did not enforce unique users.', '1. Immediately create unique user accounts for every analyst.\n2. Review all electronic data generated using shared accounts in the last year.', '1. Procure and implement a new Chromatography Data System (CDS) that is fully 21 CFR Part 11 compliant.\n2. Conduct mandatory annual data integrity training for all lab personnel.', '2025-12-31'),
+(5, 'CAPA for Gown Contamination in Sterile Area', 'Sunita Sharma', 'Microbiology Head', 'A routine microbial plate count showed high levels of contamination on an operator''s gown upon exiting the aseptic filling area.', 'High', 'Planned', 'Investigation revealed the operator did not follow the correct gowning-in procedure, missing a sanitization step.', '1. Discard the potentially affected batch.\n2. Retrain the specific operator on aseptic gowning procedures.', '1. Implement a buddy system for gowning verification before entering the aseptic core.\n2. Install video cameras in the gowning area for monitoring and training purposes.', '2025-09-15');
+
+-- Populate 'change_control' table
+INSERT INTO `change_control` (`id`, `title`, `requested_by`, `change_description`, `owner_name`, `risk`, `status`, `reason_for_change`, `affected_areas`, `implementation_plan`, `due_date`) VALUES
+(1, 'Implement New Automated Visual Inspection Machine', 'Production Head', 'Install and qualify a new "Seidenader V90+" automated inspection machine for injectable vials.', 'Engineering Head', 'High', 'Completed', 'To increase inspection speed from 200 to 400 vials per minute and improve detection of micro-particulates.', 'Injectable Production, Quality Assurance, Validation', 'Phase 1: FAT & SAT. Phase 2: Installation Qualification (IQ). Phase 3: Operational Qualification (OQ). Phase 4: Performance Qualification (PQ).', '2025-07-20'),
+(2, 'Update to Ryaltris Nasal Spray Formulation', 'R&D Head', 'Increase the concentration of the Mometasone Furoate active ingredient by 2% in the Ryaltris formulation.', 'R&D Head', 'High', 'In Progress', 'Clinical trial data suggests the increased concentration provides enhanced efficacy for patients with severe symptoms.', 'R&D, Manufacturing, Regulatory Affairs, Quality Control', '1. Conduct formulation stability studies.\n2. Manufacture three validation batches.\n3. Submit a variation to regulatory authorities (DCGI).', '2025-11-30'),
+(3, 'Onboard New Supplier for Glass Vials', 'Procurement Head', 'Qualify and approve "Schott AG" as a secondary supplier for Type I borosilicate glass vials.', 'Procurement Head', 'Medium', 'Planned', 'To mitigate supply chain risk by having a dual-source for a critical primary packaging component.', 'Procurement, QA, QC, Manufacturing', '1. Supplier Audit. 2. Material testing and qualification. 3. Stability testing with product. 4. Update BOMs.', '2025-10-01'),
+(4, 'Upgrade Laboratory Information Management System (LIMS)', 'IT Head', 'Upgrade the existing LIMS software from version 5.2 to 6.0.', 'IT Head', 'Medium', 'In Progress', 'Version 6.0 is fully cloud-based, offers better data integrity controls, and integrates with our new ERP system.', 'QC Laboratory, QA, IT', '1. System backup. 2. Installation on a test server. 3. User Acceptance Testing (UAT). 4. Go-live during a planned weekend shutdown.', '2025-08-15'),
+(5, 'Change of Sterilization Method for IV Catheters', 'Validation Head', 'Change the terminal sterilization method for "SafeCath" IV catheters from Ethylene Oxide (EtO) to E-beam radiation.', 'Validation Head', 'High', 'Planned', 'E-beam sterilization has a shorter cycle time, no toxic residues, and reduces operational costs.', 'Validation, Manufacturing, Regulatory Affairs, Microbiology Lab', '1. Material compatibility studies. 2. Sterilization validation (dose mapping). 3. Biocompatibility testing. 4. Regulatory submission.', '2026-01-31');
