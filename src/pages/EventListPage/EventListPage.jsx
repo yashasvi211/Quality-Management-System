@@ -107,7 +107,7 @@ function EventListPage() {
                 <th>Title</th>
                 <th>Type</th>
                 <th>Status</th>
-                <th>Owner</th>
+                <th>Author</th>
                 <th>Due/End Date</th>
                 <th>Risk</th>
               </tr>

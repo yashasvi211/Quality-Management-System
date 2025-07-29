@@ -8,11 +8,10 @@ from typing import Literal
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage
-# --- NEW: Import 're' for regular expression matching ---
 import re
 
 # --- Environment Setup ---
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
 
 # --- LLM Initialization ---
 llm = ChatGroq(model="llama3-8b-8192", temperature=0, api_key=GROQ_API_KEY, timeout=30.0)
@@ -36,11 +35,12 @@ class RouteQuery(BaseModel):
 class SqlQuery(BaseModel):
     query: str = Field(description="A complete, executable MySQL query.")
 
+# --- UPDATED DB SCHEMA ---
 db_schema = """
-1. `audit` table: (id, title, type, risk, auditee_name, lead_auditor, audit_date)
-2. `deviation` table: (id, title, description, owner_name, risk, date_occurred)
-3. `capa` table: (id, title, owner_name, risk, root_cause, due_date)
-4. `change_control` table: (id, title, requested_by, owner_name, risk, due_date)
+1. `audit` table: (id, title, type, risk, status, auditee_name, lead_auditor, audit_date)
+2. `deviation` table: (id, title, description, owner_name, risk, status, date_occurred)
+3. `capa` table: (id, title, owner_name, risk, status, root_cause, due_date)
+4. `change_control` table: (id, title, requested_by, owner_name, risk, status, due_date)
 """
 
 def get_db_connection():
@@ -57,33 +57,40 @@ def get_db_connection():
 def query_router(question: str):
     print("--- 🧠 AI Router ---")
     router_llm = llm.with_structured_output(RouteQuery)
-    prompt = f"Based on the user's question, should I query the database or is it a general conversational question?\n\nQuestion: {question}"
+    prompt = f"""You are a routing agent for a Quality Management System (QMS) assistant. Your job is to decide if a user's question can be answered from the QMS database or if it's a general conversational question.
+
+    - If the question contains keywords like 'audit', 'deviation', 'CAPA', 'change control', 'event', 'risk', 'status', 'owner', or asks for a list, count, or summary of data, you MUST route to 'query_planner'.
+    - For general questions (like 'what is QMS?'), greetings, or follow-ups that don't refer to specific database records, route to 'conversational'.
+
+    User Question: {question}
+    """
     return router_llm.invoke([HumanMessage(content=prompt)])
 
 def query_planner(question: str):
     print("--- 🗺️ AI Query Planner ---")
     planner_llm = llm.with_structured_output(SqlQuery)
     
-    prompt = f"""You are a MySQL expert. Your task is to generate a single, valid MySQL query to answer the user's question based on the provided database schema.
+    # --- STRONGER PROMPT ---
+    # This prompt is extremely direct to force the correct output format.
+    prompt = f"""You are a MySQL query generator. Based on the schema and user question below, generate a JSON object with a single key "query" containing the valid MySQL query.
 
-    Schema:
+    **Database Schema:**
     {db_schema}
 
-    **IMPORTANT INSTRUCTIONS:**
-    - If the user asks a general question about events (e.g., "high-risk events", "events due this month", "show all events for owner Varun Sharma"), you MUST create a query that combines results from all four tables (`audit`, `deviation`, `capa`, `change_control`) using `UNION ALL`.
-    - When using `UNION ALL`, ensure each `SELECT` statement has the same columns in the same order. For example, to get high-risk events, you would structure it like this:
-      (SELECT id, title, risk, 'Audit' as type, audit_date as event_date FROM audit WHERE risk = 'High')
-      UNION ALL
-      (SELECT id, title, risk, 'Deviation' as type, date_occurred as event_date FROM deviation WHERE risk = 'High')
-      UNION ALL
-      (SELECT id, title, risk, 'CAPA' as type, due_date as event_date FROM capa WHERE risk = 'High')
-      UNION ALL
-      (SELECT id, title, risk, 'Change Control' as type, due_date as event_date FROM change_control WHERE risk = 'High');
-    - For the `risk` column, the possible values are 'Low', 'Medium', 'High'.
+    **CRITICAL INSTRUCTIONS:**
+    - If a general question requires searching across all event types (e.g., "show cancelled events"), you MUST use `UNION ALL`.
+    - **FOR UNION QUERIES, YOU MUST USE THIS EXACT TEMPLATE**: To ensure the column count matches, select only these columns in this order: `id`, `title`, `risk`, `status`, and a manually added `type` column.
+      Example for "cancelled events":
+      `(SELECT id, title, risk, status, 'Audit' as type FROM audit WHERE status = 'Cancelled')`
+      `UNION ALL`
+      `(SELECT id, title, risk, status, 'Deviation' as type FROM deviation WHERE status = 'Cancelled')`
+      `UNION ALL`
+      `(SELECT id, title, risk, status, 'CAPA' as type FROM capa WHERE status = 'Cancelled')`
+      `UNION ALL`
+      `(SELECT id, title, risk, status, 'Change Control' as type FROM change_control WHERE status = 'Cancelled');`
 
-    User Question: {question}
-
-    Generate the SQL query that answers the question.
+    **User Question:**
+    "{question}"
     """
     result = planner_llm.invoke([HumanMessage(content=prompt)])
     print(f"--- Generated SQL: {result.query} ---")
@@ -111,7 +118,15 @@ def execute_sql(query: str):
 
 def final_responder(question: str, results):
     print("--- ✍️ AI Final Responder ---")
-    prompt = f"""You are a helpful QMS assistant. Based on the user's question and the following data from the database, provide a concise, natural language answer. Format the answer nicely using markdown if needed (e.g., bullet points).
+    prompt = f"""You are a helpful QMS assistant. Your ONLY source of information is the data provided below.
+    Based on the user's question and the data from the database, provide a direct and concise answer.
+    Do NOT use any external knowledge. If the data is empty, state that you could not find the record.
+
+    **CONTEXT FOR DATA FIELDS:**
+    - For `audit` records, the main person is `lead_auditor`.
+    - For `deviation`, `capa`, or `change_control` records, the main person is `owner_name`.
+    - When asked for "author", "owner", "lead", or "responsible person", use the appropriate field based on the record type.
+    - When asked for a specific field like "risk" or "status", extract and provide only that value.
 
     Original Question: {question}
     Database Results:
@@ -125,8 +140,7 @@ def ai_chat_endpoint(request: dict):
     if not question:
         raise HTTPException(status_code=400, detail="Query is missing.")
 
-    # --- NEW: Rule-based routing for specific event IDs ---
-    id_pattern = re.compile(r'\b(aud|dev|cpa|chc)-(\d+)\b', re.IGNORECASE)
+    id_pattern = re.compile(r'\b(aud|dev|cpa|chc)[\s-]?(\d+)\b', re.IGNORECASE)
     match = id_pattern.search(question)
 
     prefix_to_table = {
@@ -143,14 +157,11 @@ def ai_chat_endpoint(request: dict):
 
         if table_name:
             print(f"--- 🎯 Direct ID Route Found: Table '{table_name}', ID '{numeric_id}' ---")
-            # Construct a direct, reliable SQL query
             sql_query = f"SELECT * FROM {table_name} WHERE id = {numeric_id}"
             db_results = execute_sql(sql_query)
             final_answer = final_responder(question, db_results)
             return {"response": final_answer}
-    # --- End of new logic ---
 
-    # If no specific ID was found, proceed with the general AI routing
     try:
         route = query_router(question)
         if route.routing == "query_planner":

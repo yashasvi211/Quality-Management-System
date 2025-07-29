@@ -1,14 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardCheck, ShieldAlert, UserCheck, Calendar, Flag, Target, Building2, Users2, ShieldCheck as PlanIcon, ListChecks, Sparkles, SearchCheck } from 'lucide-react';
+import { ClipboardCheck, ShieldAlert, UserCheck, Calendar, Flag, Target, Building2, Users2, ShieldCheck as PlanIcon, ListChecks, Sparkles } from 'lucide-react';
+import './EventDetailPage.css'; // Assuming this file contains your detail page styles
 
 // Helper functions for badge styling
 const getRiskBadgeClass = (risk) => risk === 'High' ? 'badge-red' : risk === 'Medium' ? 'badge-yellow' : 'badge-gray';
-const getStatusBadgeClass = (status) => status === 'Planned' ? 'badge-blue' : status === 'In Progress' ? 'badge-yellow' : 'badge-green';
+const getStatusBadgeClass = (status) => {
+    switch (status) {
+        case 'Planned': return 'status-planned';
+        case 'In Progress': return 'status-in-progress';
+        case 'Completed': return 'status-completed';
+        case 'Cancelled': return 'status-cancelled';
+        default: return 'status-default';
+    }
+};
+
+const STATUS_OPTIONS = ['Planned', 'In Progress', 'Completed', 'Cancelled'];
 
 function AuditDetail({ eventId }) {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentStatus, setCurrentStatus] = useState('');
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -20,15 +32,35 @@ function AuditDetail({ eventId }) {
         }
         const data = await response.json();
         setEvent(data);
+        setCurrentStatus(data.status);
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
-
     fetchEvent();
   }, [eventId]);
+
+  const handleStatusChange = async (newStatus) => {
+    setCurrentStatus(newStatus); // Optimistically update UI
+    try {
+        const response = await fetch(`http://localhost:8000/event/audit/${eventId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+        if (!response.ok) {
+            setCurrentStatus(event.status); // Revert on failure
+            throw new Error('Failed to update status.');
+        }
+        const result = await response.json();
+        console.log(result.message);
+    } catch (err) {
+        console.error("Status update error:", err);
+        setError("Failed to update status. Please try again.");
+    }
+  };
 
   if (loading) return <div className="detail-page-container"><p>Loading audit details...</p></div>;
   if (error) return <div className="detail-page-container"><p>Error: {error}</p></div>;
@@ -36,23 +68,28 @@ function AuditDetail({ eventId }) {
 
   return (
     <div className="detail-page-container">
-      {/* Header Card */}
       <div className="header-card">
         <div className="header-top-row">
           <h1><ClipboardCheck size={24} /> AUD-{event.id}: {event.title}</h1>
+          <div className="status-selector-wrapper">
+            <select
+              value={currentStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              className={`status-selector ${getStatusBadgeClass(currentStatus)}`}
+            >
+              {STATUS_OPTIONS.map(option => (<option key={option} value={option}>{option}</option>))}
+            </select>
+          </div>
         </div>
         <div className="header-meta">
           <span className="meta-item"><Flag size={14} /><strong>Type:</strong>&nbsp;{event.type}</span>
           <span className="meta-item"><ShieldAlert size={14} /><strong>Risk:</strong>&nbsp;<span className={`status-badge ${getRiskBadgeClass(event.risk)}`}>{event.risk}</span></span>
-          <span className="meta-item"><Flag size={14} /><strong>Status:</strong>&nbsp;Planned</span>
           <span className="meta-item"><UserCheck size={14} /><strong>Lead Auditor:</strong>&nbsp;{event.lead_auditor}</span>
           <span className="meta-item"><Calendar size={14} /><strong>Date:</strong>&nbsp;{new Date(event.audit_date).toLocaleDateString()}</span>
         </div>
       </div>
-
-      {/* Main Content Grid */}
+      
       <div className="details-grid">
-        {/* Scope and Objective Section */}
         <div className="detail-section full-span">
           <h3 className="section-header"><Target size={16}/>Scope and Objective</h3>
           <dl className="fields-list">
@@ -60,8 +97,6 @@ function AuditDetail({ eventId }) {
             <dt>Objective</dt><dd>{event.objective}</dd>
           </dl>
         </div>
-
-        {/* Auditee Section */}
         <div className="detail-section">
           <h3 className="section-header"><Building2 size={16}/>Auditee</h3>
           <dl className="fields-list">
@@ -70,8 +105,6 @@ function AuditDetail({ eventId }) {
             <dt>Contact</dt><dd>{event.primary_contact}</dd>
           </dl>
         </div>
-
-        {/* Audit Team Section */}
         <div className="detail-section">
           <h3 className="section-header"><Users2 size={16}/>Audit Team</h3>
           <dl className="fields-list">
@@ -79,30 +112,6 @@ function AuditDetail({ eventId }) {
             <dt>Team Members</dt><dd>{event.members}</dd>
           </dl>
         </div>
-
-        {/* Audit Plan Section */}
-        <div className="detail-section">
-          <h3 className="section-header"><PlanIcon size={16}/>Audit Criteria</h3>
-          <p className="pre-wrap">{event.criteria}</p>
-        </div>
-        <div className="detail-section">
-          <h3 className="section-header"><ListChecks size={16}/>Audit Agenda</h3>
-          <p className="pre-wrap">{event.agenda}</p>
-        </div>
-
-        {/* Findings & CAPAs Section
-        <div className="detail-section full-span">
-            <h3 className="section-header"><SearchCheck size={16}/>Findings & CAPAs</h3>
-            <div className="placeholder-content">Findings and linked CAPAs would be listed here.</div>
-        </div> */}
-
-        {/* AI Insights Section */}
-        <div className="detail-section full-span">
-            <h3 className="section-header"><Sparkles size={16}/>AI Insights</h3>
-            <div className="placeholder-content">AI-generated insights for this audit would be displayed here.</div>
-        </div>
-
-         
       </div>
     </div>
   );
