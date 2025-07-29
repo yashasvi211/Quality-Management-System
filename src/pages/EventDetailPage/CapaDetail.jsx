@@ -20,6 +20,8 @@ function CapaDetail({ eventId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentStatus, setCurrentStatus] = useState('');
+  const [aiSummary, setAiSummary] = useState('');
+  const [loadingSummary, setLoadingSummary] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -39,6 +41,25 @@ function CapaDetail({ eventId }) {
     fetchEvent();
   }, [eventId]);
 
+  useEffect(() => {
+    if (event) {
+      const fetchSummary = async () => {
+        setLoadingSummary(true);
+        try {
+          const response = await fetch(`http://localhost:8001/event/capa/${eventId}/summary`);
+          if (!response.ok) throw new Error('Failed to fetch AI summary');
+          const data = await response.json();
+          setAiSummary(data.summary);
+        } catch (err) {
+          setAiSummary('Could not generate AI summary at this time.');
+        } finally {
+          setLoadingSummary(false);
+        }
+      };
+      fetchSummary();
+    }
+  }, [event, eventId]);
+
   const handleStatusChange = async (newStatus) => {
     setCurrentStatus(newStatus);
     try {
@@ -51,11 +72,8 @@ function CapaDetail({ eventId }) {
             setCurrentStatus(event.status);
             throw new Error('Failed to update status.');
         }
-        const result = await response.json();
-        console.log(result.message);
     } catch (err) {
         console.error("Status update error:", err);
-        setError("Failed to update status. Please try again.");
     }
   };
 
@@ -84,6 +102,10 @@ function CapaDetail({ eventId }) {
       
       <div className="details-grid">
         <div className="detail-section full-span">
+            <h3 className="section-header"><Sparkles size={16}/>AI Summary</h3>
+            <p>{loadingSummary ? 'Generating summary...' : aiSummary}</p>
+        </div>
+        <div className="detail-section full-span">
             <h3 className="section-header"><FileText size={16}/>Issue Description</h3>
             <p>{event.issue_description}</p>
         </div>
@@ -94,6 +116,14 @@ function CapaDetail({ eventId }) {
         <div className="detail-section">
             <h3 className="section-header"><UserCheck size={16}/>Responsible Person</h3>
             <p>{event.responsible_person}</p>
+        </div>
+        <div className="detail-section">
+            <h3 className="section-header"><ListChecks size={16}/>Corrective Actions</h3>
+            <p className="pre-wrap">{event.corrective_actions}</p>
+        </div>
+        <div className="detail-section">
+            <h3 className="section-header"><ListChecks size={16}/>Preventive Actions</h3>
+            <p className="pre-wrap">{event.preventive_actions}</p>
         </div>
       </div>
     </div>

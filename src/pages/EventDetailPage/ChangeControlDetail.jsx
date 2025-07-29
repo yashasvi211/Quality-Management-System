@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GitBranchPlus, ShieldAlert, UserCheck, Flag, FileText, AlertCircle, Layers, ListChecks, Calendar } from 'lucide-react';
+import { GitBranchPlus, ShieldAlert, UserCheck, Flag, FileText, AlertCircle, Layers, ListChecks, Calendar, Sparkles } from 'lucide-react';
 import './EventDetailPage.css';
 
 const getRiskBadgeClass = (risk) => risk === 'High' ? 'badge-red' : risk === 'Medium' ? 'badge-yellow' : 'badge-gray';
@@ -20,6 +20,8 @@ function ChangeControlDetail({ eventId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentStatus, setCurrentStatus] = useState('');
+  const [aiSummary, setAiSummary] = useState('');
+  const [loadingSummary, setLoadingSummary] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -39,6 +41,25 @@ function ChangeControlDetail({ eventId }) {
     fetchEvent();
   }, [eventId]);
 
+  useEffect(() => {
+    if (event) {
+      const fetchSummary = async () => {
+        setLoadingSummary(true);
+        try {
+          const response = await fetch(`http://localhost:8001/event/change-control/${eventId}/summary`);
+          if (!response.ok) throw new Error('Failed to fetch AI summary');
+          const data = await response.json();
+          setAiSummary(data.summary);
+        } catch (err) {
+          setAiSummary('Could not generate AI summary at this time.');
+        } finally {
+          setLoadingSummary(false);
+        }
+      };
+      fetchSummary();
+    }
+  }, [event, eventId]);
+
   const handleStatusChange = async (newStatus) => {
     setCurrentStatus(newStatus);
     try {
@@ -51,11 +72,8 @@ function ChangeControlDetail({ eventId }) {
             setCurrentStatus(event.status);
             throw new Error('Failed to update status.');
         }
-        const result = await response.json();
-        console.log(result.message);
     } catch (err) {
         console.error("Status update error:", err);
-        setError("Failed to update status. Please try again.");
     }
   };
 
@@ -78,11 +96,16 @@ function ChangeControlDetail({ eventId }) {
           <span className="meta-item"><Flag size={14} /><strong>Type:</strong>&nbsp;Change Control</span>
           <span className="meta-item"><ShieldAlert size={14} /><strong>Risk:</strong>&nbsp;<span className={`status-badge ${getRiskBadgeClass(event.risk)}`}>{event.risk}</span></span>
           <span className="meta-item"><UserCheck size={14} /><strong>Owner:</strong>&nbsp;{event.owner_name}</span>
+          <span className="meta-item"><UserCheck size={14} /><strong>Requested By:</strong>&nbsp;{event.requested_by}</span>
           <span className="meta-item"><Calendar size={14} /><strong>Due:</strong>&nbsp;{new Date(event.due_date).toLocaleDateString()}</span>
         </div>
       </div>
       
       <div className="details-grid">
+        <div className="detail-section full-span">
+            <h3 className="section-header"><Sparkles size={16}/>AI Summary</h3>
+            <p>{loadingSummary ? 'Generating summary...' : aiSummary}</p>
+        </div>
         <div className="detail-section full-span">
             <h3 className="section-header"><FileText size={16}/>Change Description</h3>
             <p>{event.change_description}</p>
@@ -94,6 +117,10 @@ function ChangeControlDetail({ eventId }) {
         <div className="detail-section">
             <h3 className="section-header"><Layers size={16}/>Affected Areas</h3>
             <p>{event.affected_areas}</p>
+        </div>
+        <div className="detail-section full-span">
+            <h3 className="section-header"><ListChecks size={16}/>Implementation Plan</h3>
+            <p className="pre-wrap">{event.implementation_plan}</p>
         </div>
       </div>
     </div>

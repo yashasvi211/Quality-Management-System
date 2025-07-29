@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardCheck, ShieldAlert, UserCheck, Calendar, Flag, Target, Building2, Users2, ShieldCheck as PlanIcon, ListChecks, Sparkles } from 'lucide-react';
-import './EventDetailPage.css'; // Assuming this file contains your detail page styles
+import './EventDetailPage.css';
 
-// Helper functions for badge styling
 const getRiskBadgeClass = (risk) => risk === 'High' ? 'badge-red' : risk === 'Medium' ? 'badge-yellow' : 'badge-gray';
 const getStatusBadgeClass = (status) => {
     switch (status) {
@@ -21,15 +20,15 @@ function AuditDetail({ eventId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentStatus, setCurrentStatus] = useState('');
+  const [aiSummary, setAiSummary] = useState('');
+  const [loadingSummary, setLoadingSummary] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
       try {
         setLoading(true);
         const response = await fetch(`http://localhost:8000/audit/${eventId}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch audit details');
-        }
+        if (!response.ok) throw new Error('Failed to fetch audit details');
         const data = await response.json();
         setEvent(data);
         setCurrentStatus(data.status);
@@ -42,8 +41,27 @@ function AuditDetail({ eventId }) {
     fetchEvent();
   }, [eventId]);
 
+  useEffect(() => {
+    if (event) {
+      const fetchSummary = async () => {
+        setLoadingSummary(true);
+        try {
+          const response = await fetch(`http://localhost:8001/event/audit/${eventId}/summary`);
+          if (!response.ok) throw new Error('Failed to fetch AI summary');
+          const data = await response.json();
+          setAiSummary(data.summary);
+        } catch (err) {
+          setAiSummary('Could not generate AI summary at this time.');
+        } finally {
+          setLoadingSummary(false);
+        }
+      };
+      fetchSummary();
+    }
+  }, [event, eventId]);
+
   const handleStatusChange = async (newStatus) => {
-    setCurrentStatus(newStatus); // Optimistically update UI
+    setCurrentStatus(newStatus);
     try {
         const response = await fetch(`http://localhost:8000/event/audit/${eventId}/status`, {
             method: 'PATCH',
@@ -51,14 +69,11 @@ function AuditDetail({ eventId }) {
             body: JSON.stringify({ status: newStatus }),
         });
         if (!response.ok) {
-            setCurrentStatus(event.status); // Revert on failure
+            setCurrentStatus(event.status);
             throw new Error('Failed to update status.');
         }
-        const result = await response.json();
-        console.log(result.message);
     } catch (err) {
         console.error("Status update error:", err);
-        setError("Failed to update status. Please try again.");
     }
   };
 
@@ -72,11 +87,7 @@ function AuditDetail({ eventId }) {
         <div className="header-top-row">
           <h1><ClipboardCheck size={24} /> AUD-{event.id}: {event.title}</h1>
           <div className="status-selector-wrapper">
-            <select
-              value={currentStatus}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className={`status-selector ${getStatusBadgeClass(currentStatus)}`}
-            >
+            <select value={currentStatus} onChange={(e) => handleStatusChange(e.target.value)} className={`status-selector ${getStatusBadgeClass(currentStatus)}`}>
               {STATUS_OPTIONS.map(option => (<option key={option} value={option}>{option}</option>))}
             </select>
           </div>
@@ -91,6 +102,10 @@ function AuditDetail({ eventId }) {
       
       <div className="details-grid">
         <div className="detail-section full-span">
+            <h3 className="section-header"><Sparkles size={16}/>AI Summary</h3>
+            <p>{loadingSummary ? 'Generating summary...' : aiSummary}</p>
+        </div>
+        <div className="detail-section full-span">
           <h3 className="section-header"><Target size={16}/>Scope and Objective</h3>
           <dl className="fields-list">
             <dt>Scope</dt><dd>{event.scope}</dd>
@@ -101,8 +116,9 @@ function AuditDetail({ eventId }) {
           <h3 className="section-header"><Building2 size={16}/>Auditee</h3>
           <dl className="fields-list">
             <dt>Name</dt><dd>{event.auditee_name}</dd>
-            <dt>Location</dt><dd>{event.site_location}</dd>
-            <dt>Contact</dt><dd>{event.primary_contact}</dd>
+            <dt>Location</dt><dd>{event.site_location}, {event.country}</dd>
+            <dt>Primary Contact</dt><dd>{event.primary_contact}</dd>
+             <dt>Contact Email</dt><dd>{event.contact_email}</dd>
           </dl>
         </div>
         <div className="detail-section">
@@ -111,6 +127,14 @@ function AuditDetail({ eventId }) {
             <dt>Lead Auditor</dt><dd>{event.lead_auditor}</dd>
             <dt>Team Members</dt><dd>{event.members}</dd>
           </dl>
+        </div>
+         <div className="detail-section">
+          <h3 className="section-header"><PlanIcon size={16}/>Audit Criteria</h3>
+          <p className="pre-wrap">{event.criteria}</p>
+        </div>
+        <div className="detail-section">
+          <h3 className="section-header"><ListChecks size={16}/>Audit Agenda</h3>
+          <p className="pre-wrap">{event.agenda}</p>
         </div>
       </div>
     </div>

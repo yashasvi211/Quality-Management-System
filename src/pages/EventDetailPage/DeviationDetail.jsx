@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileWarning, ShieldAlert, UserCheck, Calendar, Flag } from 'lucide-react';
+import { FileWarning, ShieldAlert, UserCheck, Calendar, Flag, Sparkles, FileText } from 'lucide-react';
 import './EventDetailPage.css';
 
 const getRiskBadgeClass = (risk) => risk === 'High' ? 'badge-red' : risk === 'Medium' ? 'badge-yellow' : 'badge-gray';
@@ -20,6 +20,8 @@ function DeviationDetail({ eventId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentStatus, setCurrentStatus] = useState('');
+  const [aiSummary, setAiSummary] = useState('');
+  const [loadingSummary, setLoadingSummary] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -39,6 +41,25 @@ function DeviationDetail({ eventId }) {
     fetchEvent();
   }, [eventId]);
 
+  useEffect(() => {
+    if (event) {
+      const fetchSummary = async () => {
+        setLoadingSummary(true);
+        try {
+          const response = await fetch(`http://localhost:8001/event/deviation/${eventId}/summary`);
+          if (!response.ok) throw new Error('Failed to fetch AI summary');
+          const data = await response.json();
+          setAiSummary(data.summary);
+        } catch (err) {
+          setAiSummary('Could not generate AI summary at this time.');
+        } finally {
+          setLoadingSummary(false);
+        }
+      };
+      fetchSummary();
+    }
+  }, [event, eventId]);
+
   const handleStatusChange = async (newStatus) => {
     setCurrentStatus(newStatus);
     try {
@@ -51,11 +72,8 @@ function DeviationDetail({ eventId }) {
             setCurrentStatus(event.status);
             throw new Error('Failed to update status.');
         }
-        const result = await response.json();
-        console.log(result.message);
     } catch (err) {
         console.error("Status update error:", err);
-        setError("Failed to update status. Please try again.");
     }
   };
 
@@ -84,7 +102,11 @@ function DeviationDetail({ eventId }) {
       
       <div className="details-grid">
         <div className="detail-section full-span">
-            <h3 className="section-header">Description</h3>
+            <h3 className="section-header"><Sparkles size={16}/>AI Summary</h3>
+            <p>{loadingSummary ? 'Generating summary...' : aiSummary}</p>
+        </div>
+        <div className="detail-section full-span">
+            <h3 className="section-header"><FileText size={16}/>Description</h3>
             <p>{event.description}</p>
         </div>
         <div className="detail-section">
@@ -94,6 +116,10 @@ function DeviationDetail({ eventId }) {
         <div className="detail-section">
             <h3 className="section-header">Corrective Actions</h3>
             <p>{event.corrective_actions}</p>
+        </div>
+        <div className="detail-section">
+            <h3 className="section-header">Reported By</h3>
+            <p>{event.reported_by}</p>
         </div>
       </div>
     </div>
