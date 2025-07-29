@@ -136,12 +136,16 @@ function CreateCAPAPage() {
   const [formData, setFormData] = useState(initialFormData);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const handleNext = () => currentStep < WIZARD_STEPS.length && setCurrentStep(currentStep + 1);
   const handlePrev = () => currentStep > 1 && setCurrentStep(currentStep - 1);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
+    setSubmitSuccess(false);
 
     // Use camelCase keys to match the backend's expectations
     const apiPayload = {
@@ -166,16 +170,18 @@ function CreateCAPAPage() {
       });
 
       if (!response.ok) {
-        // Log the actual error from the server for easier debugging
         const errorData = await response.json();
+        setSubmitError(errorData.detail || 'Failed to create CAPA');
         throw new Error(errorData.detail || 'Failed to create CAPA');
       }
 
       const result = await response.json();
       console.log('CAPA created:', result);
-      navigate('/');
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
     } catch (error) {
-      // The error will now be more specific, e.g., "Column 'responsible_person' cannot be null"
       console.error('Error:', error.message);
     }
   };
@@ -198,6 +204,16 @@ function CreateCAPAPage() {
           ))}
         </nav>
       </div>
+      {submitError && (
+        <div className="wizard-error" style={{ color: 'red', margin: '1em 0' }}>
+          {submitError}
+        </div>
+      )}
+      {submitSuccess && (
+        <div className="wizard-success" style={{ color: 'green', margin: '1em 0', fontWeight: 'bold' }}>
+          Data submitted successfully!
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="wizard-content">
         <CurrentStepComponent data={formData} setData={setFormData} />
       </form>

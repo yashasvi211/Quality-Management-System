@@ -131,12 +131,16 @@ function CreateChangeControlPage() {
   const [formData, setFormData] = useState(initialFormData);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const handleNext = () => currentStep < WIZARD_STEPS.length && setCurrentStep(currentStep + 1);
   const handlePrev = () => currentStep > 1 && setCurrentStep(currentStep - 1);
 
- const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
+    setSubmitSuccess(false);
 
     // Correctly map the flat formData state to the API payload
     const apiPayload = {
@@ -161,12 +165,16 @@ function CreateChangeControlPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        setSubmitError(errorData.detail || 'Failed to create Change Control');
         throw new Error(errorData.detail || 'Failed to create Change Control');
       }
-      
+
       const result = await response.json();
       console.log('Change Control created:', result);
-      navigate('/');
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -190,6 +198,16 @@ function CreateChangeControlPage() {
           ))}
         </nav>
       </div>
+      {submitError && (
+        <div className="wizard-error" style={{ color: 'red', margin: '1em 0' }}>
+          {submitError}
+        </div>
+      )}
+      {submitSuccess && (
+        <div className="wizard-success" style={{ color: 'green', margin: '1em 0', fontWeight: 'bold' }}>
+          Data submitted successfully!
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="wizard-content">
         <CurrentStepComponent data={formData} setData={setFormData} />
       </form>

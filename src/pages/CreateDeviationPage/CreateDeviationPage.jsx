@@ -135,19 +135,31 @@ function CreateDeviationPage() {
   const handleNext = () => currentStep < WIZARD_STEPS.length && setCurrentStep(currentStep + 1);
   const handlePrev = () => currentStep > 1 && setCurrentStep(currentStep - 1);
 
+  const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
+    setSubmitSuccess(false);
 
-    // Correctly map the flat formData state to the API payload
+    // Validate required date field
+    if (!formData.dateOccurred) {
+      setSubmitError('Please select a valid date for "Date Occurred".');
+      return;
+    }
+
+    // Map frontend fields to backend/database fields and ensure all required fields are present
     const apiPayload = {
       title: formData.title,
-      dateOccurred: formData.dateOccurred,
+      date_occurred: formData.dateOccurred, // match DB field name
       description: formData.description,
-      ownerName: formData.ownerName,
+      owner_name: formData.ownerName,
       risk: formData.risk,
-      reportedBy: formData.reportedBy,
+      status: 'Planned', // default status for new deviation
+      reported_by: formData.reportedBy,
       impact: formData.impact,
-      correctiveActions: formData.correctiveActions,
+      corrective_actions: formData.correctiveActions,
     };
 
     try {
@@ -161,12 +173,16 @@ function CreateDeviationPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        setSubmitError(errorData.detail || 'Failed to create Deviation');
         throw new Error(errorData.detail || 'Failed to create Deviation');
       }
 
       const result = await response.json();
       console.log('Deviation created:', result);
-      navigate('/');
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -190,6 +206,16 @@ function CreateDeviationPage() {
           ))}
         </nav>
       </div>
+      {submitError && (
+        <div className="wizard-error" style={{ color: 'red', margin: '1em 0' }}>
+          {submitError}
+        </div>
+      )}
+      {submitSuccess && (
+        <div className="wizard-success" style={{ color: 'green', margin: '1em 0', fontWeight: 'bold' }}>
+          Data submitted successfully!
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="wizard-content">
         <CurrentStepComponent data={formData} setData={setFormData} />
       </form>

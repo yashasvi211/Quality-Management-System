@@ -148,21 +148,23 @@ const initialFormData = {
 function CreateAuditPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(initialFormData);
-  
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const handleNext = () => currentStep < WIZARD_STEPS.length && setCurrentStep(currentStep + 1);
   const handlePrev = () => currentStep > 1 && setCurrentStep(currentStep - 1);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
+    setSubmitSuccess(false);
 
-    // --- START: Add this data transformation ---
+    // Map frontend fields to backend/database fields and ensure all required fields are present
     const apiPayload = {
       title: formData.title,
       type: formData.auditDetails.type,
-      risk: formData.risk,
       scope: formData.auditDetails.scope,
       objective: formData.auditDetails.objective,
       auditee_name: formData.auditee.name,
@@ -172,11 +174,11 @@ function CreateAuditPage() {
       contact_email: formData.auditee.contactEmail,
       audit_date: formData.date,
       lead_auditor: formData.team.leadAuditor,
-      members: formData.team.members,
+      team_members: formData.team.members,
       criteria: formData.plan.criteria,
       agenda: formData.plan.agenda,
+      risk: formData.risk,
     };
-    // --- END: Add this data transformation ---
 
     try {
       const response = await fetch('http://localhost:8000/audit', {
@@ -184,17 +186,21 @@ function CreateAuditPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        // Use the new payload object here
-        body: JSON.stringify(apiPayload), 
+        body: JSON.stringify(apiPayload),
       });
+
       if (!response.ok) {
-        // Log the error response from the server for better debugging
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create audit');
+        setSubmitError(errorData.detail || 'Failed to create Audit');
+        throw new Error(errorData.detail || 'Failed to create Audit');
       }
+
       const result = await response.json();
       console.log('Audit created:', result);
-      navigate('/');
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -211,13 +217,23 @@ function CreateAuditPage() {
             <React.Fragment key={step.id}>
               <div className={`step-indicator ${index + 1 === currentStep ? 'active' : ''} ${index + 1 < currentStep ? 'completed' : ''}`}>
                 <div className="step-circle">{index + 1 < currentStep ? <Check size={12} /> : step.id}</div>
-                <div className="step-label"><span className="step-label-title">{step.title}</span><span className="step-label-desc">{step.description}</span></div>
+                <div className="step-label"><span className="step-label-title">{step.title}</span></div>
               </div>
               {index < WIZARD_STEPS.length - 1 && <div className="step-separator">&rarr;</div>}
             </React.Fragment>
           ))}
         </nav>
       </div>
+      {submitError && (
+      <div className="wizard-error" style={{ color: 'red', margin: '1em 0' }}>
+        {submitError}
+      </div>
+    )}
+    {submitSuccess && (
+      <div className="wizard-success" style={{ color: 'green', margin: '1em 0', fontWeight: 'bold' }}>
+        Data submitted successfully!
+      </div>
+    )}
       <form onSubmit={handleSubmit} className="wizard-content">
         <CurrentStepComponent data={formData} setData={setFormData} />
       </form>
