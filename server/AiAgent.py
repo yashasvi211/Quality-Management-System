@@ -9,7 +9,6 @@ from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage
 import re
-import json
 
 # --- Environment Setup ---
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
@@ -38,10 +37,10 @@ class SqlQuery(BaseModel):
 
 # --- UPDATED DB SCHEMA ---
 db_schema = """
-1. `audit` table: (id, title, type, risk, status, auditee_name, lead_auditor, audit_date, scope, objective, members, criteria, agenda)
-2. `deviation` table: (id, title, description, owner_name, risk, status, date_occurred, reported_by, impact, corrective_actions)
-3. `capa` table: (id, title, owner_name, risk, status, root_cause, due_date, responsible_person, issue_description, corrective_actions, preventive_actions)
-4. `change_control` table: (id, title, requested_by, owner_name, risk, status, due_date, change_description, reason_for_change, affected_areas, implementation_plan)
+1. `audit` table: (id, title, type, risk, status, auditee_name, lead_auditor, audit_date)
+2. `deviation` table: (id, title, description, owner_name, risk, status, date_occurred)
+3. `capa` table: (id, title, owner_name, risk, status, root_cause, due_date)
+4. `change_control` table: (id, title, requested_by, owner_name, risk, status, due_date)
 """
 
 def get_db_connection():
@@ -72,14 +71,13 @@ def query_planner(question: str):
     planner_llm = llm.with_structured_output(SqlQuery)
     
     # --- STRONGER PROMPT ---
-    # This prompt is extremely direct and provides a template to prevent errors.
-    prompt = f"""As a MySQL expert, your sole function is to generate a single, valid MySQL query based on the user's question and the provided schema. Your output must be ONLY the SQL query string. Do not include explanations or any other text.
+    # This prompt is extremely direct to force the correct output format.
+    prompt = f"""You are a MySQL query generator. Based on the schema and user question below, generate a JSON object with a single key "query" containing the valid MySQL query.
 
     **Database Schema:**
     {db_schema}
 
     **CRITICAL INSTRUCTIONS:**
-    - If the user asks for a specific type of event (e.g., "show all audits"), query ONLY that table (e.g., `SELECT * FROM audit;`).
     - If a general question requires searching across all event types (e.g., "show cancelled events"), you MUST use `UNION ALL`.
     - **FOR UNION QUERIES, YOU MUST USE THIS EXACT TEMPLATE**: To ensure the column count matches, select only these columns in this order: `id`, `title`, `risk`, `status`, and a manually added `type` column.
       Example for "cancelled events":
@@ -93,8 +91,6 @@ def query_planner(question: str):
 
     **User Question:**
     "{question}"
-
-    **Your Response (Query ONLY):**
     """
     result = planner_llm.invoke([HumanMessage(content=prompt)])
     print(f"--- Generated SQL: {result.query} ---")
@@ -137,36 +133,6 @@ def final_responder(question: str, results):
     {results}
     """
     return llm.invoke([HumanMessage(content=prompt)]).content
-
-# --- AI Summary Endpoint ---
-@ai_app.get("/event/{event_type}/{event_id}/summary")
-def get_event_summary(event_type: str, event_id: int):
-    table_map = {
-        "audit": "audit",
-        "deviation": "deviation",
-        "capa": "capa",
-        "change-control": "change_control"
-    }
-    table_name = table_map.get(event_type)
-    if not table_name:
-        raise HTTPException(status_code=400, detail="Invalid event type.")
-
-    event_data = execute_sql(f"SELECT * FROM {table_name} WHERE id = {event_id}")
-    if not event_data or isinstance(event_data, str):
-        raise HTTPException(status_code=404, detail="Event not found.")
-
-    summary_prompt = f"""
-    You are a QMS Analyst. Based on the following data for a QMS event, provide a brief, professional summary (2-3 sentences).
-    Highlight the key information, such as the main issue, the risk level, and the person responsible.
-
-    Event Data:
-    {json.dumps(event_data[0], indent=2)}
-
-    Summary:
-    """
-    
-    summary = llm.invoke([HumanMessage(content=summary_prompt)]).content
-    return {"summary": summary}
 
 @ai_app.post("/ai-chat")
 def ai_chat_endpoint(request: dict):
